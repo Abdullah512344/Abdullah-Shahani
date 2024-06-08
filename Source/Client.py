@@ -1,55 +1,83 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
 import socket
-import sys
+import os
+import time 
+class DFSClient:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("DFS Client")
 
-def send_to_master(server_address, message, data):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect(server_address)
-        s.sendall(message.encode())
-        s.sendall(data)
-        response = s.recv(1024).decode()
-        return response
+        self.label = tk.Label(master, text="Distributed File System Client")
+        self.label.pack()
 
-def upload_file(master_address, filename, filepath):
-    with open(filepath, 'rb') as f:
-        data = f.read()
-    message = f"CREATE {filename}"
-    response = send_to_master(master_address, message, data)
-    print(response)
+        self.upload_button = tk.Button(master, text="Upload File", command=self.upload_file)
+        self.upload_button.pack()
 
-def list_files(master_address):
-    message = "LIST"
-    response = send_to_master(master_address, message, b'')
-    print("Files on the system:")
-    print(response)
+        self.download_button = tk.Button(master, text="Download File", command=self.download_file)
+        self.download_button.pack()
 
-def download_file(master_address, filename, dest_filepath):
-    message = f"GET_CHUNKS {filename}"
-    response = send_to_master(master_address, message, b'')
-    chunks = response.split()
-    with open(dest_filepath, 'wb') as f:
-        for chunk in chunks:
-            chunk_id = chunk
-            host, port = "localhost", 50051  # Local ports that are 50051,50052,50053
-            chunk_data = retrieve_chunk_from_server(host, port, chunk_id)
-            f.write(chunk_data)
+        self.file_list_label = tk.Label(master, text="Files in DFS:")
+        self.file_list_label.pack()
 
-def retrieve_chunk_from_server(host, port, chunk_id):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
-        s.sendall(f"RETRIEVE {chunk_id}".encode())
-        chunk_data = s.recv(1024)
-        return chunk_data
+        self.file_listbox = tk.Listbox(master)
+        self.file_listbox.pack(fill=tk.BOTH, expand=True)
 
-if __name__ == '__main__':
-    master_address = ('localhost', 50050)
-    command = sys.argv[1]
-    if command == 'upload':
-        filename = sys.argv[2]
-        filepath = sys.argv[3]
-        upload_file(master_address, filename, filepath)
-    elif command == 'list':
-        list_files(master_address)
-    elif command == 'download':
-        filename = sys.argv[2]
-        dest_filepath = sys.argv[3]
-        download_file(master_address, filename, dest_filepath)
+        self.refresh_button = tk.Button(master, text="Refresh File List", command=self.refresh_file_list)
+        self.refresh_button.pack()
+
+        self.master_address = ('192.168.145.128', 50050)  # IP and port of the master server
+        self.refresh_file_list()
+
+    def upload_file(self):
+        filepath = filedialog.askopenfilename()
+        if filepath:
+            filename = os.path.basename(filepath)
+            with open(filepath, 'rb') as f:
+                file_data = f.read()
+            file_size = len(file_data)
+            print(f"File size reported during creation: {file_size}")
+            message = f"CREATE {filename} {file_size}"
+            response = self.send_to_master(message, file_data)
+            messagebox.showinfo("Upload", response.decode())
+            self.refresh_file_list()
+            
+
+    def download_file(self):
+        selected_files = self.file_listbox.curselection()
+        if selected_files:
+            filename = self.file_listbox.get(selected_files[0])
+            message = f"DOWNLOAD {filename}"
+            file_data = self.send_to_master(message)
+            save_path = filedialog.asksaveasfilename(defaultextension=".txt", initialfile=filename)
+            if save_path:
+                with open(save_path, 'wb') as f:
+                    f.write(file_data)
+                messagebox.showinfo("Download", f"{filename} downloaded successfully.")
+        else:
+            messagebox.showwarning("Download", "Please select a file to download.")
+
+    def refresh_file_list(self):
+        self.file_listbox.delete(0, tk.END)
+        message = "LIST"
+        response = self.send_to_master(message)
+        file_list = response.decode().split("\n")
+        for file in file_list:
+            if file:
+                self.file_listbox.insert(tk.END, file)
+
+    def send_to_master(self, message, data=b''):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(self.master_address)
+            s.sendall(message.encode())
+            if data:
+                time.sleep(5)
+                s.sendall(data)
+       
+            response = s.recv(1024 * 1024)
+            return response
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    client = DFSClient(root)
+    root.mainloop()
