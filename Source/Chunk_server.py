@@ -3,48 +3,71 @@ import threading
 import os
 
 class ChunkServer:
-    def __init__(self, host, port, chunk_dir):
+    def __init__(self, host, port, storage_dir):
         self.host = host
         self.port = port
-        self.chunk_dir = chunk_dir
-        if not os.path.exists(chunk_dir):
-            os.makedirs(chunk_dir)
+        self.storage_dir = storage_dir
+        os.makedirs(storage_dir, exist_ok=True)
 
     def handle_client(self, conn, addr):
         print(f"Connected by {addr}")
-        data = conn.recv(1024).decode()
-        command, *args = data.split()
-        if command == "STORE":
-            self.store_chunk(conn, args)
-        elif command == "RETRIEVE":
-            self.retrieve_chunk(conn, args)
-        conn.close()
+        try:
+            data = conn.recv(1024).decode()
+            command_parts = data.split()
+            if len(command_parts) < 2:
+                raise ValueError("Invalid command format")
 
-    def store_chunk(self, conn, args):
-        chunk_id = args[0]
-        chunk_data = conn.recv(1024)
-        with open(os.path.join(self.chunk_dir, chunk_id), 'wb') as f:
+            command = command_parts[0]
+            chunk_id = command_parts[1]
+
+            if command == "STORE":
+                self.store_chunk(conn, chunk_id)
+            elif command == "RETRIEVE":
+                self.retrieve_chunk(conn, chunk_id)
+        except Exception as e:
+            print(f"Error handling client {addr}: {e}")
+        finally:
+            conn.close()
+
+    def store_chunk(self, conn, chunk_id):
+        print(f"Storing chunk {chunk_id}")
+        chunk_data = conn.recv(1024 * 1024)  # Adjust buffer size as needed
+        chunk_id = chunk_id.split(':')[0]  # Ensure proper chunk_id
+        chunk_path = os.path.join(self.storage_dir, chunk_id)
+        with open(chunk_path, 'wb') as f:
             f.write(chunk_data)
-        conn.sendall(b"Chunk stored successfully")
+        print(f"Stored chunk {chunk_id}")
 
-    def retrieve_chunk(self, conn, args):
-        chunk_id = args[0]
-        with open(os.path.join(self.chunk_dir, chunk_id), 'rb') as f:
-            chunk_data = f.read()
-        conn.sendall(chunk_data)
+    def retrieve_chunk(self, conn, chunk_id):
+        print(f"Retrieving chunk {chunk_id}")
+        chunk_id = chunk_id.split(':')[0]  # Ensure proper chunk_id
+        chunk_path = os.path.join(self.storage_dir, chunk_id)
+        if os.path.exists(chunk_path):
+            with open(chunk_path, 'rb') as f:
+                conn.sendall(f.read())
+            print(f"Retrieved chunk {chunk_id}")
+        else:
+            conn.sendall(b"ERROR: Chunk not found")
+            print(f"Chunk {chunk_id} not found")
 
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((self.host, self.port))
             s.listen()
-            print("Chunk server started, waiting for connections...")
+            print(f"Chunk server started on {self.host}:{self.port}")
             while True:
                 conn, addr = s.accept()
                 threading.Thread(target=self.handle_client, args=(conn, addr)).start()
 
 if __name__ == "__main__":
     import sys
-    port = int(sys.argv[1])
-    chunk_dir = sys.argv[2]
-    chunk_server = ChunkServer('localhost', port, chunk_dir)
-    chunk_server.start()
+    if len(sys.argv) != 4:
+        print("Usage: python3 chunk_server.py <host> <port> <storage_dir>")
+        sys.exit(1)
+
+    host = sys.argv[1]
+    port = int(sys.argv[2])
+    storage_dir = sys.argv[3]
+
+    server = ChunkServer(host, port, storage_dir)
+    server.start()
