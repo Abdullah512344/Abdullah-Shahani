@@ -6,8 +6,8 @@ class MasterServer:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.files = {}  # filename -> list of chunks
-        self.chunk_servers = ["192.168.145.128:50054", "192.168.145.128:50052"]  # Addresses of chunk servers
+        self.files = {}  
+        self.chunk_servers = ["192.168.251.129:50054", "192.168.251.129:50052"]  # Addresses of chunk servers
 
     def handle_client(self, conn, addr):
         print(f"Connected by {addr}")
@@ -46,7 +46,7 @@ class MasterServer:
             chunk_id = f"{filename}_chunk{i}"
             self.files[filename].append(chunk_id)
             for server in self.chunk_servers:
-                self.send_chunk_to_server(server, chunk_id, chunk)  # Send chunk to all servers
+                self.send_chunk_to_server(server, chunk_id, chunk)  
 
         # Send the data to the client
         conn.sendall(b"File created successfully")
@@ -119,5 +119,5 @@ class MasterServer:
                 threading.Thread(target=self.handle_client, args=(conn, addr)).start()
 
 if __name__ == "__main__":
-    master = MasterServer('0.0.0.0', 50050)  # Listen on all interfaces
+    master = MasterServer('0.0.0.0', 50050) 
     master.start()
