@@ -31,8 +31,8 @@ class ChunkServer:
 
     def store_chunk(self, conn, chunk_id):
         print(f"Storing chunk {chunk_id}")
-        chunk_data = conn.recv(1024 * 1024)  # Adjust buffer size as needed
-        chunk_id = chunk_id.split(':')[0]  # Ensure proper chunk_id
+        chunk_data = conn.recv(1024 * 1024)  
+        chunk_id = chunk_id.split(':')[0]
         chunk_path = os.path.join(self.storage_dir, chunk_id)
         with open(chunk_path, 'wb') as f:
             f.write(chunk_data)
