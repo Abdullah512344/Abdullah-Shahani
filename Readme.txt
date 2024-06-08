@@ -1,4 +1,4 @@
-The Idea is to designed the DFS System. For Stage 23/3 
+The Idea is to designed the DFS System. For Stage 3/3 
 
 Idea: Distributed File system that will be implemented on the master server, Client and master server ill communicate in order to upload / download fil . The master server then saves the data and   distributes it in chunks to the chunks server from here it will retrieve in case of download. 
 Communication s an important part of this project that will allow the server to run on different machines.
