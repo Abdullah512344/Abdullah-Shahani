@@ -54,6 +54,7 @@ The DFS system on the master end includes creating files, communication between 
 Deliverable 1, which is creating the functions for the proper functioning of the DFS system, has been proposed by Saima Ali. The work has been successfully done.  I further worked on the issue where the file size differed on the client side and the master side. The master was receiving fewer bytes than expected. I worked really hard, tried every method to resolve the issue, and finally resolved it by adding a delay and some debugging features on the client side. I created a GUI interface for the client.I interfaced the GUI with the client's functions and did testing and debugging of the code to eradicate errors.
 
 GitHub Path: https://github.com/Abdullah512344/Advance-OS-Project-DFS-.git
+Other Path: https://github.com/samra22053/Advance-OS-Final-Project.git
 
 
 Note:
